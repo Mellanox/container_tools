@@ -1,0 +1,8 @@
+#!/bin/bash
+go get github.com/Mellanox/rdmamap
+go get github.com/Mellanox/sriovnet
+go get github.com/docker/docker/api/types
+go get github.com/spf13/cobra
+go get github.com/vishvananda/netlink
+go get github.com/docker/docker/client
+CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o bin/docker_rdma_sriov docker_rdma_sriov 
