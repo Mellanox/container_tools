@@ -208,6 +208,7 @@ func newRootCmd() *cobra.Command {
 
 var level1Cmds = [...]*cobra.Command{
 	runCmd,
+	sriovCmds,
 }
 
 func setupCmds() *cobra.Command {
