@@ -12,7 +12,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+)
+
+const (
+	appVersion = "0.0.1"
 )
 
 func getDockerNetworkResourceForName(networkName string) *types.NetworkResource {
@@ -189,6 +194,20 @@ var runCmd = &cobra.Command{
 	},
 }
 
+var GitCommitId string
+
+func versionCmdFunc(cmd *cobra.Command, args []string) {
+	fmt.Println("Version:      ", appVersion)
+	fmt.Println("Go version:   ", runtime.Version())
+	fmt.Println("Git commit:   ", GitCommitId)
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Wrapper to docker run <command>",
+	Run:   versionCmdFunc,
+}
+
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "docker_rdma_sriov [OPTIONS] COMMAND [ARG...]",
@@ -207,6 +226,7 @@ func newRootCmd() *cobra.Command {
 }
 
 var level1Cmds = [...]*cobra.Command{
+	versionCmd,
 	runCmd,
 	sriovCmds,
 }

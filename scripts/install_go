@@ -1,0 +1,105 @@
+#!/bin/bash
+
+GO_MINOR="1"
+GO_MAJOR="10"
+GO_LOWER="2"
+
+GO_VER=$GO_MINOR.$GO_MAJOR.$GO_LOWER
+
+url_location="https://dl.google.com/go/go"
+machine=$(uname -m)
+
+cur_dir=$(pwd)
+ver_str=$(go version 2> /dev/null)
+
+function do_exit_func()
+{
+	cd $cur_dir
+	exit
+}
+
+function get_file_name()
+{
+	ARCH=unsupported
+	mkdir -p /tmp
+	cd /tmp
+
+	case "$machine" in
+	"x86_64")
+		ARCH=amd64
+	;;
+	"ppc64le")
+		ARCH=ppc64le
+	;;
+	"aarch64")
+		ARCH=arm64
+	;;
+	esac
+
+	if [ $ARCH = "unsupported" ]; then
+		do_exit_func
+	fi
+
+	file_name=go$GO_VER.linux-$ARCH.tar.gz
+}
+
+function download_go()
+{
+	if [ -f $file_name ]; then
+		file_name=$file_name
+	else
+		wget $file_name
+	fi
+}
+
+function get_go_version()
+{
+	ver_str2=($ver_str)
+	ver_str2=${ver_str2[2]}
+	ver_len=${#ver_str2}
+	#string:start_index:count
+	ver_str2=${ver_str2:2:$ver_len}
+	minor_number=${ver_str2%%.*}
+	major_number=${ver_str2#*.}
+	major_number=${major_number%%.*}
+}
+
+function install_go()
+{
+	tar -C /usr/local -xzf $file_name
+	export PATH=$PATH:/usr/local/go/bin
+	echo "export PATH=\$PATH:/usr/local/go/bin" >> /etc/profile
+	ln -s /usr/local/go/bin/go /usr/bin/go
+}
+
+function check_go_version()
+{
+	if [ "$major_number" -lt $GO_MAJOR ]; then
+		echo "Fail to install go"
+		do_exit_func
+	fi
+}
+
+if [ -z "$ver_str" ]; then
+        echo "go is not installed."
+        echo "Installing version $GO_VER ..."
+	get_file_name
+	download_go
+
+	if [ ! -f $file_name ]; then
+		cd $cur_dir
+		exit 1
+	fi
+
+	install_go
+	ver_str=$(/usr/local/go/bin/go version)
+
+	get_go_version
+	check_go_version
+else
+	get_go_version
+        echo "go is already installed."
+	check_go_version
+fi
+
+cd $cur_dir
