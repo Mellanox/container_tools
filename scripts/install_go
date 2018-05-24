@@ -6,7 +6,7 @@ GO_LOWER="2"
 
 GO_VER=$GO_MINOR.$GO_MAJOR.$GO_LOWER
 
-url_location="https://dl.google.com/go/go"
+url_location="https://dl.google.com/go"
 machine=$(uname -m)
 
 cur_dir=$(pwd)
@@ -48,7 +48,7 @@ function download_go()
 	if [ -f $file_name ]; then
 		file_name=$file_name
 	else
-		wget $file_name
+		wget $url_location/$file_name
 	fi
 }
 
