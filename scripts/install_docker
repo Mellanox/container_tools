@@ -1,5 +1,6 @@
 #!/bin/bash
 
+ARCH=$(uname -m)
 VERSION=18.03.1
 DOCKER_FILE=docker-$VERSION-ce.tgz
 DOCKER_SERVICE_FILE=/usr/lib/systemd/system/docker.service
@@ -22,7 +23,7 @@ WantedBy=multi-user.target" > $DOCKER_SERVICE_FILE
 
 function download_docker()
 {
-	wget https://download.docker.com/linux/static/stable/x86_64/$DOCKER_FILE
+	wget https://download.docker.com/linux/static/stable/$ARCH/$DOCKER_FILE
 	tar -xvzf $DOCKER_FILE
 }
 
