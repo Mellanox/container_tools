@@ -21,11 +21,10 @@ const (
 )
 
 func getDockerNetworkResourceForName(networkName string) *types.NetworkResource {
-	cli, err := client.NewEnvClient()
+	cli, err := getRightClient()
 	if err != nil {
 		panic(err)
 	}
-
 	networks, err := cli.NetworkList(context.Background(), types.NetworkListOptions{})
 	if err != nil {
 		panic(err)
@@ -196,10 +195,48 @@ var runCmd = &cobra.Command{
 
 var GitCommitId string
 
+func getRightClientApiVersion() (string, error) {
+	// Start with the lowest API to query which version is supported.
+	lowestCli, err3 := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.12"))
+	if err3 != nil {
+		fmt.Println("Fail to create client: ", err3)
+		return "", err3
+	}
+	allVersions, err2 := lowestCli.ServerVersion(context.Background())
+	if err2 != nil {
+		fmt.Println("Error to get server version: ", err2)
+		return "", err2
+	}
+	return allVersions.APIVersion, nil
+}
+
+func getRightClient() (*client.Client, error) {
+	var clientVersion string
+
+	desiredVersion, err := getRightClientApiVersion()
+	if err != nil {
+		clientVersion = "unknown"
+	} else {
+		clientVersion = desiredVersion
+	}
+	cli, err2 := client.NewClientWithOpts(client.FromEnv, client.WithVersion(clientVersion))
+	if err2 == nil {
+		return cli, nil
+	}
+	return nil, err
+}
+
 func versionCmdFunc(cmd *cobra.Command, args []string) {
+	var clientVersion string
+
+	cli, err := getRightClient()
+	if err == nil {
+		clientVersion = cli.ClientVersion()
+	}
 	fmt.Println("Version:      ", appVersion)
 	fmt.Println("Go version:   ", runtime.Version())
 	fmt.Println("Git commit:   ", GitCommitId)
+	fmt.Println("API version: ", clientVersion)
 }
 
 var versionCmd = &cobra.Command{
