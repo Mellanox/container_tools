@@ -1,10 +1,9 @@
-## container_tools installer
+# container_tools installer
 Few useful container orchestration, deployment tools when using RDMA
 
-Container tools provide docker_rdma_sriov tool for managing and docker containers for
-RDMA and DPDK application uses using SRIOV networking plugin.
+Container tools provide docker_rdma_sriov tool for running docker containers with RDMA/DPDK sriov devices.
 
-This is simple installer container to for these helpful container tools.
+This is simple installer container for container tools.
 
 ## How to install tools?
 ```
@@ -15,7 +14,7 @@ This install following container tools.
 
 ## How to use this tools?
 
-# How to run docker container using sriov-plugin?
+### How to run docker container using sriov-plugin?
 
 **1** Run the sriov-plugin.
 ```
@@ -28,10 +27,4 @@ docker network create -d sriov --subnet=194.168.1.0/24 -o netdevice=ens2f0 -o mo
 **3** Start container which uses rdma/dpdk devices
 ```
 docker_rdma_sriov run --net=mynet -it centos bash
-```
-
-# Enable sriov for a PF netdevice
-This command enables SRIOV for netdevice ib0 and does necessary configuration.
-```
-docker_rdma_sriov sriov enable --netdev=ib0
 ```
