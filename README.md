@@ -1,13 +1,11 @@
 # container_tools installer
-Few useful container orchestration, deployment tools when using RDMA
+This is simple installer container for container tools.
 
 Container tools provide docker_rdma_sriov tool for running docker containers with RDMA/DPDK sriov devices.
 
-This is simple installer container for container tools.
-
 ## How to install tools?
 ```
-docker run --net=host -v /usr/bin:/tmp mellanox/container_tools
+docker run --net=host -v /usr/bin:/tmp mellanox/container_tools_installer
 ```
 This install following container tools.
 1. docker_rdma_sriov

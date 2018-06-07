@@ -5,7 +5,7 @@ VALID_CMDS=(make push manifest)
 GIT_VER=$(git rev-list -1 HEAD)
 ARCH=$(uname -m)
 
-IMAGE_NAME=container_tools
+IMAGE_NAME=container_tools_installer
 ARCH_IMAGE=mellanox/$IMAGE_NAME:$ARCH
 LATEST_IMAGE=mellanox/$IMAGE_NAME:latest
 input_cmd=make
