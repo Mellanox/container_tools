@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	appVersion = "0.0.1"
+	appVersion = "0.0.2"
 )
 
 var GitCommitId string
@@ -85,6 +85,7 @@ var level1Cmds = [...]*cobra.Command{
 	versionCmd,
 	runCmd,
 	sriovCmds,
+	statsCmd,
 }
 
 func setupCmds() *cobra.Command {

@@ -12,6 +12,7 @@ go get github.com/docker/docker/api/types
 go get github.com/spf13/cobra
 go get github.com/vishvananda/netlink
 go get github.com/docker/docker/client
+go get github.com/Mellanox/rdmamap
 
 export GIT_COMMIT=$(git rev-list -1 HEAD)
 CGO_ENABLED=0 GOOS=linux go build -a -ldflags "-X main.GitCommitId=$GIT_COMMIT -extldflags "-static"" -o bin/docker_rdma_sriov docker_rdma_sriov
