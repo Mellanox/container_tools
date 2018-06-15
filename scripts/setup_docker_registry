@@ -1,0 +1,105 @@
+#!/bin/bash
+
+#This script 
+#(a) setup registery for use, only one time needed on single node.
+#(b) install registry settings to docker so that private registry can be usedful.
+#
+VALID_CMDS=(setup install)
+
+function usage_help()
+{
+	echo "$0 [COMMAND] [PARAMETERS]"
+	echo "Examples:"
+	echo "$0 setup : setup registry on this host"
+	echo "$0 setup <setup_dir> This setups registery in current directory and starts registry."
+	echo "$0 install <ca_host_name> <ca_dir_name>"
+	echo "Examples:"
+	echo "$0 install sw-mtx-007 /root/"
+	echo "$0 install command installs registry setting on this docker node from remote host"
+}
+
+function validate_INPUT_CMD()
+{
+        valid_cmd=""
+        in_cmd=$INPUT_CMD
+
+        for n in "${VALID_CMDS[@]}"; do
+                if [ "$in_cmd" = "$n" ]; then
+                        valid_cmd=$in_cmd
+                fi
+        done
+
+        if [ -z $valid_cmd ]; then
+                echo "Given command $in_cmd is invalid"
+                usage_help
+                exit 1
+        fi
+}
+
+function setup_registy()
+{
+	mkdir certs
+	mkdir data
+	
+	echo "When asked for Common Name (eg, your name or your server's hostname), enter this host name"
+
+	openssl req -newkey rsa:4096 -nodes -sha256 -keyout certs/ca.key -x509 -days 365 -out certs/ca.crt
+	
+	CUR_DIR=$SETUP_DIR
+	CERT_PATH=$CUR_DIR/certs
+	DATA_PATH=$CUR_DIR/data
+	
+	docker run -d -p 5000:5000 --restart=always --name registry \
+		-v $CERT_PATH:/certs -v $DATA_PATH:/var/lib/registry \
+		-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/ca.crt \
+		-e REGISTRY_HTTP_TLS_KEY=/certs/ca.key registry:2
+	docker ps
+}
+
+function update_docker_for_priv_registry() {
+	echo "Warning: This will restart docker"
+	mkdir -p /etc/docker/certs.d/$CA_SRC_SYSTEM:5000
+	echo $CA_SRC_SYSTEM
+	echo $CA_SRC_PATH/ca.crt
+
+	scp -r root@$CA_SRC_SYSTEM:$CA_SRC_PATH/certs/ca.crt /etc/docker/certs.d/$CA_SRC_SYSTEM:5000/
+	systemctl restart docker
+}
+
+function execute_cmd()
+{
+        case "$INPUT_CMD" in
+        "setup")
+		if [ $NUM_ARGS -lt 2 ]; then
+			usage_help
+			exit
+		fi
+		setup_registy
+        ;;
+        "install")
+		if [ $NUM_ARGS -lt 3 ]; then
+			usage_help
+			exit
+		fi
+		update_docker_for_priv_registry
+        ;;
+	"*")
+		usage_help
+		exit
+	;;
+        esac
+}
+
+NUM_ARGS=$#
+if [ $NUM_ARGS  -lt 1 ]; then
+	usage_help
+	exit
+fi
+
+INPUT_CMD=$1
+SETUP_DIR=$2
+
+CA_SRC_SYSTEM=$2
+CA_SRC_PATH=$3
+
+execute_cmd
