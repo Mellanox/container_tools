@@ -38,16 +38,16 @@ function validate_INPUT_CMD()
 
 function setup_registy()
 {
-	mkdir certs
-	mkdir data
-	
 	echo "When asked for Common Name (eg, your name or your server's hostname), enter this host name"
 
-	openssl req -newkey rsa:4096 -nodes -sha256 -keyout certs/ca.key -x509 -days 365 -out certs/ca.crt
-	
 	CUR_DIR=$SETUP_DIR
 	CERT_PATH=$CUR_DIR/certs
 	DATA_PATH=$CUR_DIR/data
+	
+	mkdir -p $CERT_PATH
+	mkdir -p $DATA_PATH
+	
+	openssl req -newkey rsa:4096 -nodes -sha256 -keyout $CERT_PATH/ca.key -x509 -days 365 -out $CERT_PATH/ca.crt
 	
 	docker run -d -p 5000:5000 --restart=always --name registry \
 		-v $CERT_PATH:/certs -v $DATA_PATH:/var/lib/registry \
