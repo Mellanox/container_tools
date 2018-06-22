@@ -86,6 +86,7 @@ var level1Cmds = [...]*cobra.Command{
 	runCmd,
 	sriovCmds,
 	statsCmd,
+	devlinkCmds,
 }
 
 func setupCmds() *cobra.Command {
