@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-var vfUserArg string
+var vfUserArg int
 
 func getDockerNetworkResourceForName(networkName string) *types.NetworkResource {
 	cli, err := getRightClient()
@@ -181,10 +181,10 @@ func allocateVfForNetwork(userCmdArgs []string) (string, string, error) {
 	return vfNetdev, rdmaDev, nil
 }
 
-func stipNonDockerUserArgs(userCmdArgs []string) ([]string) {
+func stipNonDockerUserArgs(userCmdArgs []string) []string {
 	var output []string
 
-	privArgs := []string { "--vf=" }
+	privArgs := []string{"--vf="}
 	var found bool
 
 	for _, item := range userCmdArgs {
@@ -280,5 +280,5 @@ var runCmd = &cobra.Command{
 
 func init() {
 	vfFlags := runCmd.Flags()
-	vfFlags.StringVarP(&vfUserArg, "vf", "n", "0", "vf index")
+	vfFlags.IntVarP(&vfUserArg, "vf", "v", 0, "vf index")
 }

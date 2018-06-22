@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/Mellanox/rdmamap"
 	"github.com/spf13/cobra"
-	"os"
+	"github.com/vishvananda/netns"
 	"log"
 	"net"
-	"github.com/vishvananda/netns"
-	"github.com/Mellanox/rdmamap"
+	"os"
 )
 
 func printRdmaStats(device string, stats *rdmamap.RdmaStats) {
@@ -41,7 +41,7 @@ func execUserStatsCmd(userCmdArgs []string, args []string) {
 	}
 	log.Println("nsHandle = ", nsHandle)
 	netns.Set(nsHandle)
-	
+
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		netns.Set(originalHandle)
@@ -86,7 +86,7 @@ var statsCmd = &cobra.Command{
 
 func init() {
 	/*
-	vfFlags := statsCmd.Flags()
-	vfFlags.StringVarP(&vfUserArg, "vf", "n", "0", "vf index")
+		vfFlags := statsCmd.Flags()
+		vfFlags.StringVarP(&vfUserArg, "vf", "n", "0", "vf index")
 	*/
 }
