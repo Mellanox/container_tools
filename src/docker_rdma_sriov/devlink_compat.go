@@ -5,10 +5,13 @@ import (
 	"github.com/Mellanox/sriovnet"
 	"github.com/spf13/cobra"
 	"path/filepath"
+	"strings"
 )
 
 const (
 	devlinkCompatFile = "compat/devlink/mode"
+	devlinkCompatInlineFile = "compat/devlink/inline"
+	devlinkCompatEncapFile = "compat/devlink/encap"
 )
 
 var devlinkMode string
@@ -32,12 +35,28 @@ func GetDevlinkMode(netdev string) (string, error) {
 	if err != nil {
 		return "", err
 	} else {
-		return mode, nil
+		return strings.Trim(mode, "\n"), nil
 	}
 }
 
 func SetDevlinkMode(netdev string, newMode string) error {
 	file := filepath.Join(sriovnet.NetSysDir, netdev, devlinkCompatFile)
+	fileObj := fileObject{
+		Path: file,
+	}
+	return fileObj.Write(newMode)
+}
+
+func SetDevlinkInlineMode(netdev string, newMode string) error {
+	file := filepath.Join(sriovnet.NetSysDir, netdev, devlinkCompatInlineFile)
+	fileObj := fileObject{
+		Path: file,
+	}
+	return fileObj.Write(newMode)
+}
+
+func SetDevlinkEncapMode(netdev string, newMode string) error {
+	file := filepath.Join(sriovnet.NetSysDir, netdev, devlinkCompatEncapFile)
 	fileObj := fileObject{
 		Path: file,
 	}
@@ -67,8 +86,18 @@ func setDevlinkModeFunc(cmd *cobra.Command, args []string) {
 		fmt.Println("Please specific valid devlink mode (legacy/switchdev)")
 		return
 	}
+	err := SetDevlinkEncapMode(pfNetdev, "none")
+	if err != nil {
+		fmt.Println("Fail to set the encap mode: ", err)
+		return
+	}
 
-	err := SetDevlinkMode(pfNetdev, devlinkMode)
+	err = SetDevlinkInlineMode(pfNetdev, "transport")
+	if err != nil {
+		fmt.Println("Fail to set the devlink inline mode: ", err)
+	}
+
+	err = SetDevlinkMode(pfNetdev, devlinkMode)
 	if err != nil {
 		fmt.Println("Fail to set the devlink mode: ", err)
 		return

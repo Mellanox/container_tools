@@ -131,6 +131,17 @@ func bindSriovFunc(cmd *cobra.Command, args []string) {
 					fmt.Println("Fail to bind VF: ", err)
 					break
 				}
+
+				mode, _ := GetDevlinkMode(pfNetdev)
+				if mode != "switchdev" {
+					fmt.Println("Skipping VF rep link config")
+					continue
+				}
+				err = SetVfRepresentorLinkUp(pfNetdev, vf.Index)
+				if err != nil {
+					fmt.Println("Fail to bind VF: ", err)
+					break
+				}
 			}
 		}
 		if found == false {
@@ -143,6 +154,16 @@ func bindSriovFunc(cmd *cobra.Command, args []string) {
 			if err != nil {
 				fmt.Println("Fail to bind VF: ", err)
 				fmt.Printf("Continu to bind other VFs\n")
+			}
+			mode, _ := GetDevlinkMode(pfNetdev)
+			if mode != "switchdev" {
+				fmt.Println("Skipping VF rep link config")
+				continue
+			}
+			err = SetVfRepresentorLinkUp(pfNetdev, vf.Index)
+			if err != nil {
+				fmt.Println("Fail to bind VF: ", err)
+				break
 			}
 		}
 	}
