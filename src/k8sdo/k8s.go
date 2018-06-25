@@ -2,14 +2,17 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"os"
 	"io/ioutil"
+	"path/filepath"
 )
 
 const (
 	KUBELET_CFG_FILE = "/etc/systemd/system/kubelet.service.d/10-kubeadm.conf"
-)
+	KUBELET_SRIOV_CNI_CONF_FILE = "/etc/cni/net.d/10-sriov-cni.conf"
+ )
 
 const (
 	KUBEADM_INIT_WARNING    = "WARNING"
@@ -75,36 +78,40 @@ func check_kubeadmInit_output(output string) error {
 
 	for _, line := range lines {
 		if strings.Contains(line, kubeInitSuccessOutput) {
-			fmt.Println("Looks good")
+			log.Println("Looks good")
 			return nil
 		}
 	}
 	return fmt.Errorf("Fail to perform kubelet init")
 }
 
-func kubeadmInit(mode string, aip string) error {
+func kubeadmInit(aip string, podsubnet string) error {
 	var err error
 	var apiServerIp = "--apiserver-advertise-address=" + aip
+	var cidsIp = "--pod-network-cidr=" + podsubnet
 	var cmd []string
 
 	cmd = append(cmd, "kubeadm")
 	cmd = append(cmd, "init")
 	cmd = append(cmd, apiServerIp)
+	cmd = append(cmd, cidsIp)
 	cmd = append(cmd, "--kubernetes-version")
 	cmd = append(cmd, "stable-1.10")
-	fmt.Println("Cmd = ", cmd)
+
 	stdout, stderr, err1 := execUserCmd(cmd)
 	if err1 != nil {
-		fmt.Println("Command error = ", err1)
+		log.Println("Command error = ", err1)
 		return err1
 	}
-	fmt.Println("output = ", stdout)
-	fmt.Println("err = ", stderr)
+	log.Println("output =", stdout)
+	if stderr != "" {
+		log.Println("err =", stderr)
+	}
 
 	if len(stderr) != 0 {
 		ignore := ignore_kubeadmInit_warnings(stderr)
 		if ignore == true {
-			fmt.Println("err = ", stderr)
+			log.Println("err =", stderr)
 			return fmt.Errorf("Fail to do kubeadm init")
 		}
 		check := check_kubeadmInit_errors(stderr)
@@ -127,7 +134,7 @@ func kubeletGetCgroupConfig() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("k8s cg driver = ", driver)
+	log.Println("k8s cg driver = ", driver)
 	return driver, nil
 }
 
@@ -146,7 +153,7 @@ func kubeletConfigCgroupDriver() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("driver is:", dockerCgDriver)
+	log.Println("driver is:", dockerCgDriver)
 
 	k8sCgDriver, err2 := kubeletGetCgroupConfig()
 	if err2 != nil {
@@ -192,17 +199,30 @@ func kubeletConfigDp(enable bool) error {
 }
 
 func kubectlSetupEnv() {
-	execShellCmd("mkdir -p $HOME/.kube")
-	execShellCmd("cp -f /etc/kubernetes/admin.conf $HOME/.kube/config")
-	execShellCmd("chown $(id -u):$(id -g) $HOME/.kube/config")
-	appendToFile("/etc/profile", "export KUBECONFIG=/etc/kubernetes/kubelet.conf")
+	var file string
+
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		return
+	}
+	file = filepath.Join(homeDir, ".kube", "config")
+	os.Remove(file)
+	os.Mkdir(filepath.Join(homeDir, ".kube"), 0755)
+
+	cmd := "cp -f /etc/kubernetes/admin.conf " + file
+	execShellCmd(cmd)
+}
+
+func kubectlGetNodes() {
+	execShellCmd("kubectl get nodes -o wide")
+	execShellCmd("kubectl get ds -o wide --namespace=kube-system")
 }
 
 func kubeletCheckSriovCniTemplate() (error) {
 	file := KUBELET_SRIOV_CNI_CONF_FILE
 	_, err := os.Stat(file)
 	if err != nil {
-		fmt.Printf("sriov conf file in path %s doesn't exist.\n", KUBELET_SRIOV_CNI_CONF_FILE)
+		log.Printf("sriov conf file in path %s doesn't exist.\n", KUBELET_SRIOV_CNI_CONF_FILE)
 		fmt.Errorf("sriov conf file not present")
 	}
 	input, err := ioutil.ReadFile(file)
@@ -213,7 +233,7 @@ func kubeletCheckSriovCniTemplate() (error) {
 	lines := strings.Split(string(input), "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "INVALID_IFACE") {
-			fmt.Printf("Please configure the sriov interface if0 in file %s\n",
+			log.Printf("Please configure the sriov interface if0 in file %s\n",
 				file)
 			return fmt.Errorf("invalid sriov interface cfg")
 		}
@@ -224,4 +244,9 @@ func kubeletCheckSriovCniTemplate() (error) {
 func kubeletAllowMasterPodSchedule() {
 	execShellCmd("kubectl taint nodes --all node-role.kubernetes.io/master-")
 	execShellCmd("systemctl restart kubelet")
+}
+
+func kubeletInstallSriovCni() {
+	execShellCmd("kubectl apply -f https://cdn.rawgit.com/Mellanox/sriov-cni/0faaca09/k8s-installer/k8s-sriov-cni-installer.yaml")
+	fmt.Println("User must edit netdevice and IP configuration in", KUBELET_SRIOV_CNI_CONF_FILE)
 }

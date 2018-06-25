@@ -9,10 +9,13 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"log"
 )
 
 // Takes command and argument as slice and returns stdout and stderr
 func execUserCmd(userCmdArgs []string) (string, string, error) {
+
+	log.Println("Executing:", strings.Join(userCmdArgs, " "))
 
 	cmd := exec.Command(userCmdArgs[0])
 	cmd.Args = userCmdArgs
@@ -33,15 +36,24 @@ func execUserCmd(userCmdArgs []string) (string, string, error) {
 	return string(output), string(errout), nil
 }
 
-func execShellCmd(cmd string) {
+func execShellCmdInternal(cmd string, print bool) (string) {
 	cmdArgs := strings.Split(cmd, " ")
-	execUserCmd(cmdArgs)
+	stdout, errout, _ := execUserCmd(cmdArgs)
+	if stdout != "" && print {
+		log.Println(stdout)
+	}
+	if errout != "" {
+		log.Println("error is:", errout)
+	}
+	return stdout
+}
+
+func execShellCmd(cmd string) {
+	execShellCmdInternal(cmd, true)
 }
 
 func execShellCmdOutput(cmd string) string {
-	cmdArgs := strings.Split(cmd, " ")
-	stdout, _, _ := execUserCmd(cmdArgs)
-	return stdout
+	return execShellCmdInternal(cmd, false)
 }
 
 func writeStringToFile(file string, value string) error {
@@ -127,8 +139,8 @@ func FindKeyValue(input string, key string) (string, error) {
 	}
 	data := rex.FindAllStringSubmatch(input, -1)
 
-	fmt.Println("input = ", input)
-	fmt.Println("data = ", data)
+	fmt.Println("input =", input)
+	fmt.Println("data =", data)
 
 	for _, kv := range data {
 		k := kv[1]
@@ -155,7 +167,7 @@ func appendToFile(file string, entry string) {
 
 	for _, line := range lines {
 		if strings.Contains(line, entry) {
-			fmt.Println("Entry exist in ", file, line)
+			fmt.Println("Entry exist in", file, line)
 			return
 		}
 	}
