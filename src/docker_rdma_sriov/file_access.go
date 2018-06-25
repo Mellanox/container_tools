@@ -23,7 +23,7 @@ func (attrib *fileObject) Open() (err error) {
 }
 
 func (attrib *fileObject) OpenRO() (err error) {
-	attrib.File, err = os.OpenFile(attrib.Path, os.O_RDONLY, 0444)
+	attrib.File, err = os.Open(attrib.Path)
 	return err
 }
 
@@ -148,4 +148,35 @@ func dirExists(dirname string) bool {
 func fileExists(dirname string) bool {
 	info, err := os.Stat(dirname)
 	return err == nil && !info.IsDir()
+}
+
+func AppendStringToFile(file string, data string) error {
+	// If the file doesn't exist, create it, or append to the file
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte(data))
+	f.Close()
+	return err
+}
+
+func WriteStringToFile(file string, data string) error {
+	f, err := os.OpenFile(file, os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte(data))
+	f.Close()
+	return err
+}
+
+func ReadFileToLines(file string) ([]string, error) {
+
+	fileObj := fileObject{
+		Path: file,
+	}
+	data, _ := fileObj.Read()
+	lines := strings.Split(data, "\n")
+	return lines, nil
 }

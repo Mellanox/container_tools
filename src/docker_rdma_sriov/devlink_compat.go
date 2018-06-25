@@ -95,6 +95,15 @@ func setDevlinkModeFunc(cmd *cobra.Command, args []string) {
 	err = SetDevlinkInlineMode(pfNetdev, "transport")
 	if err != nil {
 		fmt.Println("Fail to set the devlink inline mode: ", err)
+		fmt.Println("Ignoring the inline mode error.")
+	}
+
+	if devlinkMode == "switchdev" {
+		err = setupSwitchdevUdevRule(pfNetdev)
+		if err != nil {
+			fmt.Println("Fail to setup udev rules ", err)
+			return
+		}
 	}
 
 	err = SetDevlinkMode(pfNetdev, devlinkMode)
