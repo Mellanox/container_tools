@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	devlinkCompatFile = "compat/devlink/mode"
+	devlinkCompatFile       = "compat/devlink/mode"
 	devlinkCompatInlineFile = "compat/devlink/inline"
-	devlinkCompatEncapFile = "compat/devlink/encap"
+	devlinkCompatEncapFile  = "compat/devlink/encap"
 )
 
 var devlinkMode string
