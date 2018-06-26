@@ -109,6 +109,24 @@ func unbindSriovFunc(cmd *cobra.Command, args []string) {
 	fmt.Printf("\n")
 }
 
+func BindVf(pfNetdev string, handle *sriovnet.PfNetdevHandle, vf *sriovnet.VfObj) error {
+	fmt.Printf("Binding VF: %d\n", vf.Index)
+	err := sriovnet.BindVf(handle, vf)
+	if err != nil {
+		fmt.Println("Fail to bind VF: ", err)
+		return nil
+	}
+	mode, _ := GetDevlinkMode(pfNetdev)
+	if mode != "switchdev" {
+		fmt.Println("Skipping VF rep link config")
+	}
+	err = SetVfRepresentorLinkUp(pfNetdev, vf.Index)
+	if err != nil {
+		fmt.Println("Fail to bind VF: ", err)
+	}
+	return err
+}
+
 func bindSriovFunc(cmd *cobra.Command, args []string) {
 	if pfNetdev == "" {
 		fmt.Println("Please specific valid PF netdevice")
@@ -121,27 +139,14 @@ func bindSriovFunc(cmd *cobra.Command, args []string) {
 
 	if vfIndex != -1 {
 		var found bool
-		var err error
 		for _, vf := range handle.List {
-			if vfIndex == vf.Index {
-				found = true
-				fmt.Printf("Binding VF: %d\n", vf.Index)
-				err = sriovnet.BindVf(handle, vf)
-				if err != nil {
-					fmt.Println("Fail to bind VF: ", err)
-					break
-				}
-
-				mode, _ := GetDevlinkMode(pfNetdev)
-				if mode != "switchdev" {
-					fmt.Println("Skipping VF rep link config")
-					continue
-				}
-				err = SetVfRepresentorLinkUp(pfNetdev, vf.Index)
-				if err != nil {
-					fmt.Println("Fail to bind VF: ", err)
-					break
-				}
+			if vfIndex != vf.Index {
+				continue
+			}
+			found = true
+			err := BindVf(pfNetdev, handle, vf)
+			if err != nil {
+				break
 			}
 		}
 		if found == false {
@@ -149,20 +154,8 @@ func bindSriovFunc(cmd *cobra.Command, args []string) {
 		}
 	} else {
 		for _, vf := range handle.List {
-			fmt.Printf("Binding VF: %d\n", vf.Index)
-			err := sriovnet.BindVf(handle, vf)
+			err := BindVf(pfNetdev, handle, vf)
 			if err != nil {
-				fmt.Println("Fail to bind VF: ", err)
-				fmt.Printf("Continu to bind other VFs\n")
-			}
-			mode, _ := GetDevlinkMode(pfNetdev)
-			if mode != "switchdev" {
-				fmt.Println("Skipping VF rep link config")
-				continue
-			}
-			err = SetVfRepresentorLinkUp(pfNetdev, vf.Index)
-			if err != nil {
-				fmt.Println("Fail to bind VF: ", err)
 				break
 			}
 		}
