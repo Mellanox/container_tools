@@ -5,7 +5,7 @@ Container tools provide docker_rdma_sriov tool for running docker containers wit
 
 ## How to install tools?
 ```
-docker run --net=host -v /usr/bin:/tmp mellanox/container_tools_installer
+docker run --net=host -v /usr/bin:/tmp rdma/container_tools_installer
 ```
 This install following container tools.
 1. docker_rdma_sriov
@@ -16,7 +16,7 @@ This install following container tools.
 
 **1** Run the sriov-plugin.
 ```
-docker run -v /run/docker/plugins:/run/docker/plugins -v /etc/docker:/etc/docker --net=host --privileged mellanox/sriov-plugin
+docker run -v /run/docker/plugins:/run/docker/plugins -v /etc/docker:/etc/docker -v /var/run:/var/run --net=host --privileged rdma/sriov-plugin
 ```
 **2** Create sriov based network
 ```
