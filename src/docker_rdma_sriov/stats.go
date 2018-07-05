@@ -1,71 +1,51 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/Mellanox/rdmamap"
+	"github.com/docker/docker/api/types"
 	"github.com/spf13/cobra"
-	"github.com/vishvananda/netns"
-	"log"
-	"net"
 	"os"
 )
 
-func printRdmaStats(device string, stats *rdmamap.RdmaStats) {
+func DumpAllContainersRdmaStats() {
+	cli, err := getRightClient()
+	if err != nil {
+		return
+	}
+	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
+	if err != nil {
+		fmt.Println("Fail to get container list", err)
+		return
+	}
 
-	for _, portstats := range stats.PortStats {
-		fmt.Printf("device: %s, port: %d\n", device, portstats.Port)
-		fmt.Println("Hw stats:")
-		for _, entry := range portstats.HwStats {
-			fmt.Printf("%s = %d\n", entry.Name, entry.Value)
+	for _, container := range containers {
+		//There is no need to get stats of the containers running
+		//in default host network namespace.
+		//It can be queries directly via sysfs access or
+		//future rdmatool.
+		if container.HostConfig.NetworkMode == "host" {
+			continue
 		}
-		fmt.Println("Stats:")
-		for _, entry := range portstats.HwStats {
-			fmt.Printf("%s = %d\n", entry.Name, entry.Value)
-		}
+		fmt.Println("Container = ", container.ID)
+		fmt.Println("State = ", container.State)
+		fmt.Println("Status = ", container.Status)
+		fmt.Println("Network mode = ", container.HostConfig.NetworkMode)
+
+		rdmamap.GetDockerContainerRdmaStats(container.ID)
 	}
 }
 
 func execUserStatsCmd(userCmdArgs []string, args []string) {
 
-	fmt.Println("args = ", args)
-
-	originalHandle, err := netns.Get()
-	if err != nil {
-		log.Println("Fail to get handle of current net ns", err)
-		return
-	}
-	nsHandle, err := netns.GetFromDocker(args[0])
-	if err != nil {
-		log.Println("Invalid docker id: ", args[0])
-		return
-	}
-	log.Println("nsHandle = ", nsHandle)
-	netns.Set(nsHandle)
-
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		netns.Set(originalHandle)
-		return
-	}
-	fmt.Printf("Interfaces: %v\n", ifaces)
-	for _, iface := range ifaces {
-		if iface.Name == "lo" {
-			continue
+	if len(args) > 0 {
+		for _, cid := range args {
+			rdmamap.GetDockerContainerRdmaStats(cid)
 		}
-		rdmadev, err := rdmamap.GetRdmaDeviceForNetdevice(iface.Name)
-		if err != nil {
-			continue
-		}
-		rdmastats, err := rdmamap.GetRDmaSysfsAllPortsStats(rdmadev)
-		if err != nil {
-			log.Println("Fail to query device stats: ", err)
-			continue
-		}
-		log.Println("rdma device = ", rdmadev)
-		printRdmaStats(rdmadev, &rdmastats)
+	} else {
+		DumpAllContainersRdmaStats()
 	}
-
-	netns.Set(originalHandle)
 }
 
 func execStatsCmd(cmd *cobra.Command, args []string) {
@@ -85,8 +65,5 @@ var statsCmd = &cobra.Command{
 }
 
 func init() {
-	/*
-		vfFlags := statsCmd.Flags()
-		vfFlags.StringVarP(&vfUserArg, "vf", "n", "0", "vf index")
-	*/
+
 }
