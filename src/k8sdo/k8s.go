@@ -96,7 +96,7 @@ func kubeadmInit(aip string, podsubnet string) error {
 	cmd = append(cmd, apiServerIp)
 	cmd = append(cmd, cidsIp)
 	cmd = append(cmd, "--kubernetes-version")
-	cmd = append(cmd, "stable-1.10")
+	cmd = append(cmd, "stable-1.11")
 
 	stdout, stderr, err1 := execUserCmd(cmd)
 	if err1 != nil {
@@ -247,6 +247,6 @@ func kubeletAllowMasterPodSchedule() {
 }
 
 func kubeletInstallSriovCni() {
-	execShellCmd("kubectl apply -f https://cdn.rawgit.com/Mellanox/sriov-cni/0faaca09/k8s-installer/k8s-sriov-cni-installer.yaml")
+	execShellCmd("kubectl apply -f https://cdn.rawgit.com/Mellanox/sriov-cni/master/k8s-installer/k8s-sriov-cni-installer.yaml")
 	fmt.Println("User must edit netdevice and IP configuration in", KUBELET_SRIOV_CNI_CONF_FILE)
 }
