@@ -45,6 +45,7 @@ var level1Cmds = [...]*cobra.Command{
 	versionCmd,
 	installCmd,
 	setupCmd,
+	startCmd,
 }
 
 func setupCmds() *cobra.Command {
