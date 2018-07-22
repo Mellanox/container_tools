@@ -21,6 +21,9 @@ func setupGenericNode() (error) {
 		return err
 	}
 	err = kubeletConfigDp(true)
+
+	systemSwapoff()
+	systemDisableSelinux()
 	return err
 }
 
@@ -41,6 +44,9 @@ func setupMasterNode(aipArg string, podSubnetArg string) {
 	if err != nil {
 		return
 	}
+	KubeletEnableSystemd()
+	KubeletStartSystemd()
+
 	kubectlSetupEnv()
 	kubectlGetNodes()
 	kubeletAllowMasterPodSchedule()

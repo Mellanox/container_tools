@@ -250,3 +250,12 @@ func kubeletInstallSriovCni() {
 	execShellCmd("kubectl apply -f https://cdn.rawgit.com/Mellanox/sriov-cni/master/k8s-installer/k8s-sriov-cni-installer.yaml")
 	fmt.Println("User must edit netdevice and IP configuration in", KUBELET_SRIOV_CNI_CONF_FILE)
 }
+
+func KubeletEnableSystemd() {
+	execShellCmd("systemctl enable kubelet")
+}
+
+func KubeletStartSystemd() {
+	execShellCmd("systemctl restart kubelet")
+	execShellCmd("systemctl status -l kubelet")
+}
