@@ -1,8 +1,8 @@
 #!/bin/bash
 
 GO_MINOR="1"
-GO_MAJOR="10"
-GO_LOWER="2"
+GO_MAJOR="12"
+GO_LOWER="4"
 
 GO_VER=$GO_MINOR.$GO_MAJOR.$GO_LOWER
 
