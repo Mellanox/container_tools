@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	appVersion = "0.0.2"
+	appVersion = "0.0.3"
 )
 
 var GitCommitId string
