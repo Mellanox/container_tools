@@ -6,6 +6,8 @@ import (
 	"github.com/Mellanox/sriovnet"
 	"github.com/spf13/cobra"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
+	"runtime"
 	"syscall"
 )
 
@@ -21,6 +23,7 @@ var sriovCmds = &cobra.Command{
 var pfNetdev string
 var vfIndex int
 var containerId string
+var vfNewNdevName string
 
 func enableSriovFunc(cmd *cobra.Command, args []string) {
 	if pfNetdev == "" {
@@ -192,6 +195,36 @@ func getSandboxKeyFd(cid string) (int, error) {
 	return fd, nil
 }
 
+func renameNetdevName(cid, newname string, oldname string) error {
+	// Lock the OS Thread so we don't accidentally switch namespaces
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	originalHandle, err := netns.Get()
+	if err != nil {
+		fmt.Println("Fail to get handle of current net ns", err)
+		return err
+	}
+
+	nsHandle, err := netns.GetFromDocker(containerId)
+	if err != nil {
+		fmt.Println("Invalid docker id: ", containerId)
+		return err
+	}
+	netns.Set(nsHandle)
+	vfLink, err := netlink.LinkByName(oldname)
+	if err != nil {
+		fmt.Printf("Netdev not found for vf index = %d err=%v\n", vfIndex, err)
+		return err
+	}
+	err = netlink.LinkSetName(vfLink, newname)
+	if err != nil {
+		fmt.Printf("Netdev %v not found\n", oldname)
+	}
+	netns.Set(originalHandle)
+	return nil
+}
+
 func attachNdevSriovFunc(cmd *cobra.Command, args []string) {
 	var found bool
 	var vf *sriovnet.VfObj
@@ -245,6 +278,7 @@ func attachNdevSriovFunc(cmd *cobra.Command, args []string) {
 		fmt.Printf("Fail to move vf Index %d, netdev=%v to container, err=%v\n",
 			vfIndex, vfNetdev, err)
 	}
+	renameNetdevName(containerId, vfNewNdevName, vfNetdev)
 }
 
 var enableSriovCmd = &cobra.Command{
@@ -305,6 +339,7 @@ func init() {
 	attachFlags.IntVarP(&vfIndex, "vf", "v", -1, "vf index to attach to container")
 	attachFlags.StringVarP(&pfNetdev, "netdev", "n", "", "PF netdevice whose VF to attach to container")
 	attachFlags.StringVarP(&containerId, "container", "c", "", "Container id to attach to")
+	attachFlags.StringVarP(&vfNewNdevName, "vfNewNdevName", "N", "eth0", "VF netdev name in container")
 }
 
 /* add new sriov command here */
