@@ -8,9 +8,12 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/spf13/cobra"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -142,14 +145,25 @@ func allocateSpecificVf(pfNetdeviceName string, vf string) (string, error) {
 	return "", fmt.Errorf("Requested VF %q is unavailable", vf)
 }
 
-func allocateVfForNetwork(userCmdArgs []string) (string, string, error) {
+func getNetworkType(networkName string) string {
+
+	network := getDockerNetworkResourceForName(networkName)
+	if network != nil {
+		return "plugin"
+	}
+
+	// Plugin based network is not provided, so check if it is
+	// container:containerId format
+
+	if strings.Contains(networkName, "container:") {
+		return "container"
+	}
+	return "unknown"
+}
+
+func getVfDevicesByPlugin(networkName string, userCmdArgs []string) (string, string, error) {
 	var vfNetdev string
 	var err error
-
-	networkName := getNonDefaultNetwork(userCmdArgs)
-	if networkName == "" {
-		return "", "", fmt.Errorf("Invalid network information")
-	}
 
 	network := getDockerNetworkResourceForName(networkName)
 	if network == nil {
@@ -179,6 +193,75 @@ func allocateVfForNetwork(userCmdArgs []string) (string, string, error) {
 		return "", "", err
 	}
 	return vfNetdev, rdmaDev, nil
+}
+
+func getContainerId(networkName string) string {
+
+	containerId := strings.Split(networkName, ":")
+	if len(containerId) < 2 {
+		return ""
+	}
+	return containerId[1]
+}
+
+// Returns rdma device for a netdev provisioned in a container
+func getVfDevicesByContainer(networkName string) (string, string, error) {
+	var rdmadev string
+
+	containerId := getContainerId(networkName)
+	if containerId == "" {
+		return "", "", fmt.Errorf("Invalid container id format")
+	}
+
+	// Lock the OS Thread so we don't accidentally switch namespaces
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	nsHandle, err := netns.GetFromDocker(containerId)
+	if err != nil {
+		fmt.Println("Invalid container id: ", containerId)
+		return "", "", fmt.Errorf("Invalid container id")
+	}
+	originalHandle, err := netns.Get()
+	if err != nil {
+		fmt.Println("Fail to get handle of current net ns", err)
+		return "", "", fmt.Errorf("Fail to get handle of current net ns")
+	}
+	netns.Set(nsHandle)
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		netns.Set(originalHandle)
+		return "", "", fmt.Errorf("Fail to get interfaces")
+	}
+	for _, iface := range ifaces {
+		if iface.Name == "lo" {
+			continue
+		}
+
+		/* We currently support only first rdma device */
+		rdmadev, err = rdmamap.GetRdmaDeviceForNetdevice(iface.Name)
+		if err == nil && rdmadev != "" {
+			break
+		}
+	}
+	netns.Set(originalHandle)
+	return "", rdmadev, nil
+}
+
+func allocateVfForNetwork(userCmdArgs []string) (string, string, error) {
+	networkName := getNonDefaultNetwork(userCmdArgs)
+	if networkName == "" {
+		return "", "", fmt.Errorf("Invalid network information")
+	}
+
+	pluginType := getNetworkType(networkName)
+	if pluginType == "plugin" {
+		return getVfDevicesByPlugin(networkName, userCmdArgs)
+	} else {
+		return getVfDevicesByContainer(networkName)
+	}
+	return "", "", fmt.Errorf("Invalid/Unknown network information")
 }
 
 func stipNonDockerUserArgs(userCmdArgs []string) []string {
@@ -215,24 +298,31 @@ func buildUserCmd(userCmdArgs []string) ([]string, error) {
 		return nil, err
 	}
 
-	handle, err := netlink.LinkByName(netDev)
-	if err != nil {
-		return nil, err
-	}
-	netAttr := handle.Attrs()
-	macAddr := netAttr.HardwareAddr.String()
-	macAddrArg := "--mac-address=" + macAddr
-	runCmds = append(runCmds, macAddrArg)
-
-	charDevs := rdmamap.GetRdmaCharDevices(rdmaDev)
-	if len(charDevs) != 0 {
-		charDevCmdArgs = toCharDevCmdArgs(charDevs)
-	}
-	for _, devcmdArg := range charDevCmdArgs {
-		runCmds = append(runCmds, devcmdArg)
+	/* If netdev is setup outside for this container, there is
+	 * no need to pass mac address param.
+	 */
+	if netDev != "" {
+		handle, err := netlink.LinkByName(netDev)
+		if err != nil {
+			return nil, err
+		}
+		netAttr := handle.Attrs()
+		macAddr := netAttr.HardwareAddr.String()
+		macAddrArg := "--mac-address=" + macAddr
+		runCmds = append(runCmds, macAddrArg)
 	}
 
-	runCmds = append(runCmds, "--cap-add=IPC_LOCK")
+	if rdmaDev != "" {
+		charDevs := rdmamap.GetRdmaCharDevices(rdmaDev)
+		if len(charDevs) != 0 {
+			charDevCmdArgs = toCharDevCmdArgs(charDevs)
+		}
+		for _, devcmdArg := range charDevCmdArgs {
+			runCmds = append(runCmds, devcmdArg)
+		}
+
+		runCmds = append(runCmds, "--cap-add=IPC_LOCK")
+	}
 
 	output := stipNonDockerUserArgs(userCmdArgs)
 
