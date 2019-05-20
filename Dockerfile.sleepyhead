@@ -1,0 +1,5 @@
+FROM debian:stretch-slim
+
+ADD sleep.sh /usr/bin
+
+CMD /usr/bin/sleep.sh
