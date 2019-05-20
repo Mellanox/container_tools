@@ -26,3 +26,37 @@ docker network create -d sriov --subnet=194.168.1.0/24 -o netdevice=ens2f0 -o mo
 ```
 docker_rdma_sriov run --net=mynet -it centos bash
 ```
+
+### How to run docker container without a sriov-plugin?
+
+**1** Configure sriov and if necessary switchdev mode.
+```
+docker_rdma_sriov sriov enable -n ens2f0
+```
+
+**2** Run dummy container in new net namespace without a plugin
+```
+docker run --net=none -d mellanox/sleepyhead
+```
+
+Get the container id to use it later for netdevice configuration, say 8d6cb8f49507.
+
+**3** Provision one VF say vf index=1 to a dummy container.
+
+Assign VF 1 netdev of PF PCI netdevice ens2f0, name as eth0 in container.
+
+```
+docker_rdma_sriov run sriov attachndev --container 8d6cb8f49507 --netdev ens2f0 --vf 1 -N eth0
+```
+
+**4** Assign IP address and gateway address to this VF netdevice
+
+```
+docker_rdma_sriov net ipcfg -i 194.168.1.1/24 -g 194.168.1.45 -n eth1 -c 8d6cb8f49507
+```
+
+**5** Now start a real RDMA application container
+
+```
+docker_rdma_sriov run -it --net=container:8d6cb8f49507 mellanox/mlnx_ofed_linux-4.4-2.0.7.0-centos7.4 bash
+```
