@@ -84,6 +84,7 @@ func newRootCmd() *cobra.Command {
 var level1Cmds = [...]*cobra.Command{
 	versionCmd,
 	runCmd,
+	netcfgCmds,
 	sriovCmds,
 	statsCmd,
 	devlinkCmds,
