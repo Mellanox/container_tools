@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/Mellanox/rdmamap"
 	"github.com/Mellanox/sriovnet"
 	"github.com/spf13/cobra"
 	"github.com/vishvananda/netlink"
@@ -281,6 +282,64 @@ func attachNdevSriovFunc(cmd *cobra.Command, args []string) {
 	renameNetdevName(containerId, vfNewNdevName, vfNetdev)
 }
 
+func attachRdmadevSriovFunc(cmd *cobra.Command, args []string) {
+	var found bool
+	var vf *sriovnet.VfObj
+
+	if pfNetdev == "" {
+		fmt.Println("Please specify valid PF netdevice")
+		return
+	}
+	handle, err := sriovnet.GetPfNetdevHandle(pfNetdev)
+	if err != nil {
+		fmt.Printf("Fail to get handle, err=%v\n", err)
+		return
+	}
+
+	if vfIndex == -1 {
+		fmt.Println("Please specific valid VF index")
+		return
+	}
+	for _, vf = range handle.List {
+		if vfIndex == vf.Index {
+			found = true
+			break
+		}
+	}
+	if found == false {
+		fmt.Printf("VF index = %d not found\n", vfIndex)
+		return
+	}
+	if containerId == "" {
+		fmt.Println("Please specify container id")
+		return
+	}
+	rdmadevs := rdmamap.GetRdmaDevicesForPcidev(vf.PciAddress)
+	if len(rdmadevs) == 0 {
+		fmt.Printf("No RDMA device founf for vf %d\n", vfIndex)
+		return
+	}
+
+	/* inspect container and get sandbox key handle */
+	sandboxkeyFd, err := getSandboxKeyFd(containerId)
+	if err != nil {
+		return
+	}
+
+	for _, dev := range rdmadevs {
+		link, err := netlink.RdmaLinkByName(dev)
+		if err != nil {
+			return
+		}
+		err = netlink.RdmaLinkSetNsFd(link, uint32(sandboxkeyFd))
+		if err != nil {
+			fmt.Printf("Fail to move vf Index %d, rdmadev=%v to container, err=%v\n",
+				vfIndex, dev, err)
+			return
+		}
+	}
+}
+
 var enableSriovCmd = &cobra.Command{
 	Use:   "enable",
 	Short: "Enable sriov for PF netdevice",
@@ -317,6 +376,12 @@ var attachNdevSriovCmd = &cobra.Command{
 	Run:   attachNdevSriovFunc,
 }
 
+var attachRdmadevSriovCmd = &cobra.Command{
+	Use:   "attachrdev",
+	Short: "Attach VF's RDMA device to an existing container specified using containerid",
+	Run:   attachRdmadevSriovFunc,
+}
+
 func init() {
 	enableFlags := enableSriovCmd.Flags()
 	enableFlags.StringVarP(&pfNetdev, "netdev", "n", "", "enable sriov for the PF netdevice")
@@ -340,6 +405,11 @@ func init() {
 	attachFlags.StringVarP(&pfNetdev, "netdev", "n", "", "PF netdevice whose VF to attach to container")
 	attachFlags.StringVarP(&containerId, "container", "c", "", "Container id to attach to")
 	attachFlags.StringVarP(&vfNewNdevName, "vfNewNdevName", "N", "eth0", "VF netdev name in container")
+
+	attachRdmaFlags := attachRdmadevSriovCmd.Flags()
+	attachRdmaFlags.IntVarP(&vfIndex, "vf", "v", -1, "vf index to attach to container")
+	attachRdmaFlags.StringVarP(&pfNetdev, "netdev", "n", "", "PF netdevice whose VF RDMA to attach to container")
+	attachRdmaFlags.StringVarP(&containerId, "container", "c", "", "Container id to attach to")
 }
 
 /* add new sriov command here */
@@ -350,6 +420,7 @@ var sriovCmdList = [...]*cobra.Command{
 	unbindSriovCmd,
 	bindSriovCmd,
 	attachNdevSriovCmd,
+	attachRdmadevSriovCmd,
 }
 
 func init() {
