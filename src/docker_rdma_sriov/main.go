@@ -88,6 +88,7 @@ var level1Cmds = [...]*cobra.Command{
 	sriovCmds,
 	statsCmd,
 	devlinkCmds,
+	rdmaNetnsCfgCmds,
 }
 
 func setupCmds() *cobra.Command {
