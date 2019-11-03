@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ARCH=$(uname -m)
-VERSION=18.03.1
-DOCKER_FILE=docker-$VERSION-ce.tgz
+VERSION=19.03.4
+DOCKER_FILE=docker-$VERSION.tgz
 DOCKER_SERVICE_FILE=/usr/lib/systemd/system/docker.service
 DATA_ROOT=
 function write_docker_service_file()
