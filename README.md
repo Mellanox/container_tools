@@ -61,7 +61,7 @@ Assign VF 1 RDMA device of PF PCI netdevice ens2f0, in container.
 This is supported only in exclusive mode.
 
 ```
-docker_rdma_sriov sriov attachrdev -container 8d6cb8f49507 -n ens2f0 -v 1
+docker_rdma_sriov sriov attachrdev -container 8d6cb8f49507 --netdev ens2f0 -vf 1
 ```
 
 **5** Assign IP address and gateway address to this VF netdevice
